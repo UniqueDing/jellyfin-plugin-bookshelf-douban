@@ -1,0 +1,17 @@
+---
+name: "Douban Bookshelf"
+guid: "d7072285-d6f1-442f-8473-f7c2e76446d8"
+version: "0.1.0.0"
+targetAbi: "10.11.0.0"
+framework: "net9.0"
+owner: "uniqueding"
+overview: "Fetch book metadata from Douban"
+description: >
+  Provides Douban book metadata, cover image, external id, and external url support for Jellyfin Books libraries.
+
+category: "Books"
+artifacts:
+  - "Jellyfin.Plugin.DoubanBookshelf.dll"
+  - "HtmlAgilityPack.dll"
+changelog: |-
+  - Trim plugin to Douban-only metadata support.
