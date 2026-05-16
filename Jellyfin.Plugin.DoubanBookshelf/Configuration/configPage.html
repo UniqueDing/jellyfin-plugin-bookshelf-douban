@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Douban Bookshelf</title>
+</head>
+<body>
+    <div id="DoubanBookshelfConfigPage" data-role="page" class="page type-interior pluginConfigurationPage">
+        <div data-role="content">
+            <div class="content-primary">
+                <form id="DoubanBookshelfConfigForm">
+                    <div class="verticalSection verticalSection-extrabottompadding">
+                        <div class="sectionTitleContainer flex align-items-center">
+                            <h2 class="sectionTitle">Douban Bookshelf</h2>
+                        </div>
+
+                        <label class="checkboxContainer">
+                            <input is="emby-checkbox" type="checkbox" id="EnableDoubanAvoidRiskControl" />
+                            <span>启用豆瓣防封禁</span>
+                        </label>
+                        <div class="fieldDescription checkboxFieldDescription">
+                            启用后会降低豆瓣请求频率，并在遇到豆瓣安全挑战时尝试自动完成校验后重试请求。大量刮削时建议开启。
+                        </div>
+
+                        <div class="inputContainer">
+                            <label class="inputLabel inputLabelUnfocused" for="DoubanCookies">豆瓣 Cookies</label>
+                            <textarea is="emby-textarea" id="DoubanCookies" class="emby-textarea" rows="5"></textarea>
+                            <div class="fieldDescription">
+                                可选。填入浏览器中复制的豆瓣 Cookie，例如 <code>bid=...; dbcl2=...</code>。配置 Cookie 后防封禁模式会使用较短的安全请求间隔。
+                            </div>
+                        </div>
+                    </div>
+
+                    <button is="emby-button" type="submit" class="raised button-submit block">
+                        <span>保存</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <script type="text/javascript">
+            var DoubanBookshelfConfig = {
+                pluginId: 'd7072285-d6f1-442f-8473-f7c2e76446d8'
+            };
+
+            document.querySelector('#DoubanBookshelfConfigPage').addEventListener('pageshow', function () {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(DoubanBookshelfConfig.pluginId).then(function (config) {
+                    document.querySelector('#EnableDoubanAvoidRiskControl').checked = config.EnableDoubanAvoidRiskControl || false;
+                    document.querySelector('#DoubanCookies').value = config.DoubanCookies || '';
+                    Dashboard.hideLoadingMsg();
+                });
+            });
+
+            document.querySelector('#DoubanBookshelfConfigForm').addEventListener('submit', function (event) {
+                event.preventDefault();
+                Dashboard.showLoadingMsg();
+
+                ApiClient.getPluginConfiguration(DoubanBookshelfConfig.pluginId).then(function (config) {
+                    config.EnableDoubanAvoidRiskControl = document.querySelector('#EnableDoubanAvoidRiskControl').checked;
+                    config.DoubanCookies = document.querySelector('#DoubanCookies').value || '';
+
+                    ApiClient.updatePluginConfiguration(DoubanBookshelfConfig.pluginId, config).then(function () {
+                        Dashboard.processPluginConfigurationUpdateResult();
+                    });
+                });
+            });
+        </script>
+    </div>
+</body>
+</html>

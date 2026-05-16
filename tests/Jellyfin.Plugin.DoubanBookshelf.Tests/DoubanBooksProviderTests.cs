@@ -1,4 +1,5 @@
 using System.Net;
+using Jellyfin.Plugin.DoubanBookshelf.Configuration;
 using Jellyfin.Data.Enums;
 using Jellyfin.Plugin.DoubanBookshelf.Providers.Douban;
 using Jellyfin.Plugin.DoubanBookshelf.Tests.Http;
@@ -13,7 +14,12 @@ public class DoubanBooksProviderTests
 {
     private static DoubanBooksProvider CreateProvider(IHttpClientFactory httpClientFactory)
     {
-        var doubanClient = new DoubanClient(httpClientFactory, NullLogger<DoubanClient>.Instance, new DoubanBookParser());
+        return CreateProvider(httpClientFactory, new PluginConfiguration());
+    }
+
+    private static DoubanBooksProvider CreateProvider(IHttpClientFactory httpClientFactory, PluginConfiguration configuration)
+    {
+        var doubanClient = new DoubanClient(httpClientFactory, NullLogger<DoubanClient>.Instance, new DoubanBookParser(), () => configuration);
         return new DoubanBooksProvider(doubanClient);
     }
 
@@ -223,5 +229,46 @@ public class DoubanBooksProviderTests
         Assert.True(requests[0].Headers.Contains("Sec-Fetch-Mode"));
         Assert.True(requests[1].Headers.TryGetValues("Cookie", out var cookies));
         Assert.Contains("bid=test-cookie", string.Join(";", cookies));
+    }
+
+    [Fact]
+    public async Task GetSearchResults_WithConfiguredCookies_SendsConfiguredCookies()
+    {
+        var requests = new List<HttpRequestMessage>();
+        var handler = new MockHttpMessageHandler(
+            new List<(Func<Uri, bool> requestMatcher, MockHttpResponse response)>
+            {
+                (uri => uri.AbsoluteUri.Contains("search?cat=1001", StringComparison.Ordinal), new MockHttpResponse(HttpStatusCode.OK, TestHelpers.GetFixture("douban-book-search.html"))),
+                (uri => uri.AbsoluteUri.Contains("subject/26912767", StringComparison.Ordinal), new MockHttpResponse(HttpStatusCode.OK, TestHelpers.GetFixture("douban-book-detail.html")))
+            },
+            request => requests.Add(request));
+        var mockedHttpClientFactory = Substitute.For<IHttpClientFactory>();
+        using var client = new HttpClient(handler);
+        mockedHttpClientFactory.CreateClient(Arg.Any<string>()).Returns(client);
+        var configuration = new PluginConfiguration
+        {
+            DoubanCookies = "bid=configured-bid; dbcl2=configured-login"
+        };
+
+        IRemoteMetadataProvider<Book, BookInfo> provider = CreateProvider(mockedHttpClientFactory, configuration);
+
+        var results = await provider.GetSearchResults(new BookInfo { Name = "深入理解计算机系统" }, CancellationToken.None);
+
+        Assert.Single(results);
+        Assert.True(requests[0].Headers.TryGetValues("Cookie", out var cookies));
+        var cookieHeader = string.Join(";", cookies);
+        Assert.Contains("bid=configured-bid", cookieHeader);
+        Assert.Contains("dbcl2=configured-login", cookieHeader);
+    }
+
+    [Fact]
+    public void ParseConfiguredCookies_IgnoresMalformedCookies()
+    {
+        var cookies = DoubanClient.ParseConfiguredCookies("bid=test; malformed; dbcl2=abc=def; =empty; ck=");
+
+        Assert.Equal("test", cookies["bid"]);
+        Assert.Equal("abc=def", cookies["dbcl2"]);
+        Assert.Equal(string.Empty, cookies["ck"]);
+        Assert.False(cookies.ContainsKey("malformed"));
     }
 }
