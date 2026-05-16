@@ -12,6 +12,5 @@ description: >
 category: "Books"
 artifacts:
   - "Jellyfin.Plugin.DoubanBookshelf.dll"
-  - "HtmlAgilityPack.dll"
 changelog: |-
   - Trim plugin to Douban-only metadata support.
