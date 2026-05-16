@@ -35,6 +35,15 @@ Douban blocked request or returned a security challenge: ... (Forbidden) Challen
 
 If the DebugRunner shows the same message, the problem is the current network path to Douban, not Jellyfin matching logic.
 
+## Anti-Blocking Settings
+
+The plugin includes optional Douban anti-blocking settings in Jellyfin Dashboard -> Plugins -> Douban Bookshelf.
+
+- Enable Douban anti-blocking: slows Douban requests to a safer pace. Anonymous requests are spaced by about 5 seconds; requests with configured Douban cookies are spaced by about 3 seconds.
+- Douban Cookies: optional cookies copied from a logged-in browser session, for example `bid=...; dbcl2=...`. These cookies are sent with Douban requests and are refreshed when plugin configuration changes.
+
+When anti-blocking is enabled, the client also tries to solve Douban's `sec.douban.com` SHA-512 nonce challenge and retries the original request once. This can reduce temporary scraping blocks, but it cannot guarantee access if Douban has blocked the server IP or requires an interactive CAPTCHA/login flow.
+
 ## Project Layout
 
 ```text
@@ -61,7 +70,8 @@ Main Jellyfin plugin project.
 - `Jellyfin.Plugin.DoubanBookshelf.csproj` defines the runtime assembly, target framework, analyzers, and NuGet dependencies.
 - `Plugin.cs` is the Jellyfin plugin entrypoint. It sets the plugin name and stable plugin GUID.
 - `PluginServiceRegistrator.cs` registers shared services used by provider classes, currently `DoubanBookParser` and `DoubanClient`.
-- `Configuration/PluginConfiguration.cs` is the plugin configuration type required by Jellyfin's `BasePlugin<TConfiguration>` shape. It is currently empty because this plugin has no settings page.
+- `Configuration/PluginConfiguration.cs` stores anti-blocking settings such as request pacing and optional Douban cookies.
+- `Configuration/configPage.html` is the Jellyfin Dashboard configuration page for these settings.
 - `Properties/AssemblyInfo.cs` exposes internal members to the test assembly.
 
 ### `Common/`
@@ -79,7 +89,7 @@ All Douban-specific provider code.
 - `DoubanUrls.cs` stores Douban URL formats for search and book detail pages.
 - `DoubanBook.cs` is the internal metadata model parsed from Douban HTML.
 - `DoubanBookParser.cs` uses HtmlAgilityPack to parse Douban search result pages and book detail pages.
-- `DoubanClient.cs` performs HTTP requests to Douban, keeps lightweight session cookies, sends browser-like headers, and logs Douban security blocks.
+- `DoubanClient.cs` performs HTTP requests to Douban, keeps lightweight session cookies, sends browser-like headers, applies optional anti-blocking pacing, and logs Douban security blocks.
 - `DoubanBooksProvider.cs` implements `IRemoteMetadataProvider<Book, BookInfo>`. It powers Jellyfin Identify/search and metadata refresh for books.
 - `DoubanBooksImageProvider.cs` implements `IRemoteImageProvider`. It provides the primary cover image for books that already have a Douban ID.
 - `DoubanExternalId.cs` adds the `Douban` external ID field in Jellyfin.
@@ -158,6 +168,14 @@ nix-shell --run 'dotnet build "Jellyfin.Plugin.DoubanBookshelf.sln" --configurat
 
 Without Nix, use a .NET 9 SDK and run the same `dotnet` commands directly.
 
+## Test Tools
+
+- Unit tests: `nix-shell --run 'dotnet test "Jellyfin.Plugin.DoubanBookshelf.sln" --configuration Release --logger "console;verbosity=minimal"'`. These verify filename parsing, Douban HTML parsing, metadata mapping, image provider behavior, configured cookies, and blocked-response handling.
+- DebugRunner: `dotnet run --project tools/DoubanDebugRunner -- --douban-id <id>`, `--isbn <isbn>`, or `--title <title>`. It performs real Douban requests and prints parsed books as JSON; exit code `0` means at least one book was parsed, exit code `1` means no result, and exit code `2` means invalid arguments or build/runtime setup failure.
+- Douban unblock watcher: `nix-shell --run './scripts/watch-douban-unblock.sh --interval-seconds 3600'`. It repeatedly runs DebugRunner, writes success details to `douban-unblocked-at.txt`, and appends every attempt to `douban-unblock-check.log`.
+- Package verification: `nix-shell --run './scripts/package-plugin.sh'` builds `dist/Douban-Bookshelf-0.1.0.0.zip` and its `.sha256`. Use `unzip -l dist/Douban-Bookshelf-0.1.0.0.zip` to confirm the release zip contains only `Jellyfin.Plugin.DoubanBookshelf.dll`.
+- Manifest verification: `GITHUB_REPOSITORY='uniqueding/jellyfin-plugin-bookshelf-douban' python3 ./scripts/generate_manifest.py ./dist/Douban-Bookshelf-0.1.0.0.zip v0.1.0` generates a local `manifest.json` for inspection. Delete the generated file after local checks because release workflow publishes it as an artifact.
+
 ## Package
 
 Create an installable plugin zip:
@@ -166,7 +184,7 @@ Create an installable plugin zip:
 nix-shell --run './scripts/package-plugin.sh'
 ```
 
-The package script reads `build.yaml`, publishes the plugin, writes `meta.json`, and creates:
+The package script reads `build.yaml`, publishes the plugin, and creates:
 
 ```text
 dist/Douban-Bookshelf-0.1.0.0.zip
@@ -176,15 +194,23 @@ dist/Douban-Bookshelf-0.1.0.0.zip.sha256
 The zip should contain exactly:
 
 ```text
-meta.json
 Jellyfin.Plugin.DoubanBookshelf.dll
-HtmlAgilityPack.dll
 ```
+
+Release publishing also generates `manifest.json`. This is Jellyfin's plugin repository manifest, describing the plugin name, GUID, version, target ABI, package URL, checksum, and changelog. The workflow publishes it to the fixed `manifest` release tag.
 
 ## Install
 
+For release builds, add this plugin repository URL in Jellyfin Dashboard:
+
+```text
+https://github.com/uniqueding/jellyfin-plugin-bookshelf-douban/releases/download/manifest/manifest.json
+```
+
+For manual installation:
+
 1. Extract `dist/Douban-Bookshelf-0.1.0.0.zip`.
-2. Copy the extracted files into a Jellyfin plugin directory such as:
+2. Copy the extracted file into a Jellyfin plugin directory such as:
 
 ```text
 plugins/Douban Bookshelf/
