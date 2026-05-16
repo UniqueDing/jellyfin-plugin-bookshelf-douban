@@ -74,15 +74,7 @@ PYARTIFACTS
 }
 
 NAME="$(read_yaml_value name)"
-GUID="$(read_yaml_value guid)"
 VERSION="$(read_yaml_value version)"
-TARGET_ABI="$(read_yaml_value targetAbi)"
-FRAMEWORK="$(read_yaml_value framework)"
-OWNER="$(read_yaml_value owner)"
-OVERVIEW="$(read_yaml_value overview)"
-CATEGORY="$(read_yaml_value category)"
-DESCRIPTION="$(read_block_value description)"
-CHANGELOG="$(read_block_value changelog)"
 PACKAGE_BASENAME="Douban-Bookshelf-${VERSION}"
 ZIP_PATH="${DIST_DIR}/${PACKAGE_BASENAME}.zip"
 
@@ -100,47 +92,10 @@ for artifact in "${ARTIFACTS[@]}"; do
   cp "${PUBLISH_DIR}/${artifact}" "$PACKAGE_DIR/"
 done
 
-CATEGORY="$CATEGORY" \
-CHANGELOG="$CHANGELOG" \
-DESCRIPTION="$DESCRIPTION" \
-GUID="$GUID" \
-NAME="$NAME" \
-OVERVIEW="$OVERVIEW" \
-OWNER="$OWNER" \
-TARGET_ABI="$TARGET_ABI" \
-VERSION="$VERSION" \
-FRAMEWORK="$FRAMEWORK" \
-ARTIFACTS_JOINED="$(printf '%s\n' "${ARTIFACTS[@]}")" \
-python3 - "$PACKAGE_DIR/meta.json" <<'PYMETA'
-from datetime import datetime, timezone
-import json
-import os
-import sys
-
-artifacts = [item for item in os.environ["ARTIFACTS_JOINED"].splitlines() if item]
-meta = {
-    "category": os.environ["CATEGORY"],
-    "changelog": os.environ["CHANGELOG"],
-    "description": os.environ["DESCRIPTION"],
-    "guid": os.environ["GUID"],
-    "name": os.environ["NAME"],
-    "overview": os.environ["OVERVIEW"],
-    "owner": os.environ["OWNER"],
-    "targetAbi": os.environ["TARGET_ABI"],
-    "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
-    "version": os.environ["VERSION"],
-    "framework": os.environ["FRAMEWORK"],
-    "artifacts": artifacts,
-}
-with open(sys.argv[1], "w", encoding="utf-8") as f:
-    json.dump(meta, f, indent=2)
-    f.write("\n")
-PYMETA
-
 (
   cd "$PACKAGE_DIR"
   rm -f "$ZIP_PATH"
-  zip -q -9 "$ZIP_PATH" meta.json "${ARTIFACTS[@]}"
+  zip -q -9 "$ZIP_PATH" "${ARTIFACTS[@]}"
 )
 
 sha256sum "$ZIP_PATH" > "${ZIP_PATH}.sha256"
