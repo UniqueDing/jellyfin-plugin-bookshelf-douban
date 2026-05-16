@@ -52,7 +52,6 @@ When anti-blocking is enabled, the client also tries to solve Douban's `sec.doub
 ├── tests/Jellyfin.Plugin.DoubanBookshelf.Tests/  # Unit tests and HTML fixtures
 ├── tools/DoubanDebugRunner/               # Local CLI for real Douban requests
 ├── scripts/package-plugin.sh              # Builds the installable plugin zip
-├── scripts/watch-douban-unblock.sh        # Periodically checks whether Douban is reachable again
 ├── build.yaml                             # Plugin package metadata
 ├── Directory.Build.props                  # Shared version metadata
 ├── Jellyfin.Plugin.DoubanBookshelf.sln    # Solution file
@@ -127,36 +126,6 @@ dotnet run --project tools/DoubanDebugRunner -- --title 深入理解计算机系
 
 The runner performs real HTTP requests and prints parsed metadata as JSON. It is useful for checking whether Douban is reachable from the current machine.
 
-## Douban Unblock Watcher
-
-If Douban blocks the current network path, you can periodically check when it becomes reachable again:
-
-```bash
-nix-shell --run './scripts/watch-douban-unblock.sh --interval-seconds 3600'
-```
-
-By default, the watcher checks Douban subject `6082808` once per hour. When the request succeeds, it writes:
-
-```text
-douban-unblocked-at.txt
-```
-
-Each failed or successful check is appended to:
-
-```text
-douban-unblock-check.log
-```
-
-Useful options:
-
-```bash
-./scripts/watch-douban-unblock.sh --douban-id 6082808 --interval-seconds 1800
-./scripts/watch-douban-unblock.sh --isbn 9787544253994 --max-attempts 24
-./scripts/watch-douban-unblock.sh --title 百年孤独 --result-file /tmp/douban-ok.txt
-```
-
-Use a longer interval to avoid quickly triggering Douban's request limit again.
-
 ## Build And Test
 
 If you use Nix, enter the provided shell implicitly with `nix-shell --run`:
@@ -172,7 +141,6 @@ Without Nix, use a .NET 9 SDK and run the same `dotnet` commands directly.
 
 - Unit tests: `nix-shell --run 'dotnet test "Jellyfin.Plugin.DoubanBookshelf.sln" --configuration Release --logger "console;verbosity=minimal"'`. These verify filename parsing, Douban HTML parsing, metadata mapping, image provider behavior, configured cookies, and blocked-response handling.
 - DebugRunner: `dotnet run --project tools/DoubanDebugRunner -- --douban-id <id>`, `--isbn <isbn>`, or `--title <title>`. It performs real Douban requests and prints parsed books as JSON; exit code `0` means at least one book was parsed, exit code `1` means no result, and exit code `2` means invalid arguments or build/runtime setup failure.
-- Douban unblock watcher: `nix-shell --run './scripts/watch-douban-unblock.sh --interval-seconds 3600'`. It repeatedly runs DebugRunner, writes success details to `douban-unblocked-at.txt`, and appends every attempt to `douban-unblock-check.log`.
 - Package verification: `nix-shell --run './scripts/package-plugin.sh'` builds `dist/Douban-Bookshelf-0.1.0.0.zip` and its `.sha256`. Use `unzip -l dist/Douban-Bookshelf-0.1.0.0.zip` to confirm the release zip contains only `Jellyfin.Plugin.DoubanBookshelf.dll`.
 - Manifest verification: `GITHUB_REPOSITORY='uniqueding/jellyfin-plugin-bookshelf-douban' python3 ./scripts/generate_manifest.py ./dist/Douban-Bookshelf-0.1.0.0.zip v0.1.0` generates a local `manifest.json` for inspection. Delete the generated file after local checks because release workflow publishes it as an artifact.
 
