@@ -166,7 +166,6 @@ public class DoubanBooksProvider : IRemoteMetadataProvider<Book, BookInfo>
             SearchProviderName = DoubanConstants.ProviderName,
             Name = book.Title,
             Overview = WebUtility.HtmlDecode(book.Description),
-            ImageUrl = book.CoverUrl,
             ProductionYear = GetYearFromPublishedDate(book.PublishedDate)
         };
         remoteSearchResult.SetProviderId(DoubanConstants.ProviderId, book.Id);
@@ -198,11 +197,6 @@ public class DoubanBooksProvider : IRemoteMetadataProvider<Book, BookInfo>
         if (!string.IsNullOrWhiteSpace(doubanBook.Publisher))
         {
             book.AddStudio(doubanBook.Publisher);
-        }
-
-        if (!string.IsNullOrWhiteSpace(doubanBook.Series))
-        {
-            book.SeriesName = doubanBook.Series;
         }
 
         if (doubanBook.Tags.Count > 0)

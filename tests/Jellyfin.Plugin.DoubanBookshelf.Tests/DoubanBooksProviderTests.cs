@@ -50,7 +50,7 @@ public class DoubanBooksProviderTests
             {
                 Assert.Equal(DoubanConstants.ProviderName, first.SearchProviderName);
                 Assert.Equal("深入理解计算机系统 (第3版):原书第3版", first.Name);
-                Assert.Equal("https://img1.doubanio.com/view/subject/l/public/s29195878.jpg", first.ImageUrl);
+                Assert.Null(first.ImageUrl);
                 Assert.Equal(2016, first.ProductionYear);
                 Assert.True(HasProviderId("26912767", first.ProviderIds));
             });
@@ -76,7 +76,7 @@ public class DoubanBooksProviderTests
         Assert.Equal("zh", metadata.ResultLanguage);
         Assert.True(HasProviderId("26912767", metadata.Item.ProviderIds));
         Assert.Equal("深入理解计算机系统 (第3版):原书第3版", metadata.Item.Name);
-        Assert.Equal("计算机科学丛书", metadata.Item.SeriesName);
+        Assert.Null(metadata.Item.SeriesName);
         Assert.Equal(2016, metadata.Item.ProductionYear);
         Assert.Equal(9.7F, metadata.Item.CommunityRating);
         Assert.Collection(metadata.Item.Studios, studio => Assert.Equal("机械工业出版社", studio));
