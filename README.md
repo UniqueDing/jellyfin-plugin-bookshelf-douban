@@ -8,8 +8,6 @@
 
 Jellyfin Douban Bookshelf is a Jellyfin Books metadata plugin that fetches book information from Douban.
 
-It is trimmed down to Douban-only support. Google Books, Comic Vine, comic archive parsing, EPUB OPF parsing, and related legacy Bookshelf features have been removed.
-
 The plugin can import:
 
 - Title and subtitle
@@ -22,6 +20,34 @@ The plugin can import:
 - ISBN
 - Primary cover image
 - External Douban link
+
+## Install
+
+Add one of these plugin repository URLs in Jellyfin Dashboard:
+
+```text
+https://github.com/uniqueding/jellyfin-plugin-bookshelf-douban/releases/download/manifest/manifest.json
+```
+
+Chinese mirror:
+
+```text
+https://ghfast.top/https://github.com/uniqueding/jellyfin-plugin-bookshelf-douban/releases/download/manifest/manifest_cn.json
+```
+
+Manual installation:
+
+1. Extract `dist/Douban-Bookshelf-0.1.0.0.zip`.
+2. Copy the extracted file into a Jellyfin plugin directory such as:
+
+```text
+plugins/Douban Bookshelf/
+```
+
+3. Restart Jellyfin.
+4. In Jellyfin Dashboard, enable the `Douban` metadata fetcher for the Books library.
+
+If the `Douban ID` field appears but search is empty, check whether `Douban` is enabled in the library metadata fetchers. The external ID field and the metadata search provider are filtered separately by Jellyfin.
 
 ## Current Limitation
 
@@ -142,7 +168,7 @@ Without Nix, use a .NET 9 SDK and run the same `dotnet` commands directly.
 - Unit tests: `nix-shell --run 'dotnet test "Jellyfin.Plugin.DoubanBookshelf.sln" --configuration Release --logger "console;verbosity=minimal"'`. These verify filename parsing, Douban HTML parsing, metadata mapping, image provider behavior, configured cookies, and blocked-response handling.
 - DebugRunner: `dotnet run --project tools/DoubanDebugRunner -- --douban-id <id>`, `--isbn <isbn>`, or `--title <title>`. It performs real Douban requests and prints parsed books as JSON; exit code `0` means at least one book was parsed, exit code `1` means no result, and exit code `2` means invalid arguments or build/runtime setup failure.
 - Package verification: `nix-shell --run './scripts/package-plugin.sh'` builds `dist/Douban-Bookshelf-0.1.0.0.zip` and its `.sha256`. Use `unzip -l dist/Douban-Bookshelf-0.1.0.0.zip` to confirm the release zip contains only `Jellyfin.Plugin.DoubanBookshelf.dll`.
-- Manifest verification: `GITHUB_REPOSITORY='uniqueding/jellyfin-plugin-bookshelf-douban' python3 ./scripts/generate_manifest.py ./dist/Douban-Bookshelf-0.1.0.0.zip v0.1.0` generates a local `manifest.json` for inspection. Delete the generated file after local checks because release workflow publishes it as an artifact.
+- Manifest verification: after packaging, run `GITHUB_REPOSITORY='uniqueding/jellyfin-plugin-bookshelf-douban' python3 ./scripts/generate_manifest.py ./dist/Douban-Bookshelf-0.1.0.0.zip v0.1.0` to generate `manifest.json` and `manifest_cn.json` locally.
 
 ## Package
 
@@ -165,29 +191,7 @@ The zip should contain exactly:
 Jellyfin.Plugin.DoubanBookshelf.dll
 ```
 
-Release publishing also generates `manifest.json`. This is Jellyfin's plugin repository manifest, describing the plugin name, GUID, version, target ABI, package URL, checksum, and changelog. The workflow publishes it to the fixed `manifest` release tag.
-
-## Install
-
-For release builds, add this plugin repository URL in Jellyfin Dashboard:
-
-```text
-https://github.com/uniqueding/jellyfin-plugin-bookshelf-douban/releases/download/manifest/manifest.json
-```
-
-For manual installation:
-
-1. Extract `dist/Douban-Bookshelf-0.1.0.0.zip`.
-2. Copy the extracted file into a Jellyfin plugin directory such as:
-
-```text
-plugins/Douban Bookshelf/
-```
-
-3. Restart Jellyfin.
-4. In Jellyfin Dashboard, enable the `Douban` metadata fetcher for the Books library.
-
-If the `Douban ID` field appears but search is empty, check whether `Douban` is enabled in the library metadata fetchers. The external ID field and the metadata search provider are filtered separately by Jellyfin.
+The release process also publishes `manifest.json` and `manifest_cn.json`. These Jellyfin plugin repository manifests describe the plugin name, GUID, version, target ABI, package URL, checksum, and changelog.
 
 ## Usage Tips
 

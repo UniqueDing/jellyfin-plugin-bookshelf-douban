@@ -24,6 +24,15 @@ def read_yaml_value(key: str) -> str:
     raise RuntimeError(f"Missing {key} in {BUILD_YAML}")
 
 
+def get_version(tag: str | None = None) -> str:
+    env_version = os.environ.get("VERSION")
+    if env_version:
+        return env_version.lstrip("v")
+    if tag:
+        return tag.lstrip("v")
+    return read_yaml_value("version")
+
+
 def read_block_value(key: str) -> str:
     lines = BUILD_YAML.read_text(encoding="utf-8").splitlines()
     for index, line in enumerate(lines):
@@ -70,6 +79,17 @@ def load_existing_manifest(repository: str) -> list[dict[str, object]]:
         raise
 
 
+def load_existing_cn_manifest(repository: str) -> list[dict[str, object]]:
+    url = f"https://github.com/{repository}/releases/download/manifest/manifest_cn.json"
+    try:
+        with urlopen(url) as response:
+            return json.load(response)
+    except HTTPError as error:
+        if error.code == 404:
+            return [base_manifest_entry()]
+        raise
+
+
 def base_manifest_entry() -> dict[str, object]:
     return {
         "guid": read_yaml_value("guid"),
@@ -83,7 +103,7 @@ def base_manifest_entry() -> dict[str, object]:
 
 
 def generate_version(package_path: Path, tag: str, repository: str) -> dict[str, str]:
-    version = read_yaml_value("version")
+    version = get_version(tag)
     return {
         "version": version,
         "changelog": get_tag_changelog(tag),
@@ -92,6 +112,20 @@ def generate_version(package_path: Path, tag: str, repository: str) -> dict[str,
         "checksum": sha256sum(package_path),
         "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
+
+
+def write_cn_manifest(manifest: list[dict[str, object]], repository: str) -> None:
+    cn_manifest = json.loads(json.dumps(manifest, ensure_ascii=False))
+    prefix = os.environ.get("CN_DOMAIN", "https://ghfast.top/").rstrip("/")
+    github_release_url = re.compile(r"https://github\.com/([^/]+/[^/]+)/releases/download/", re.IGNORECASE)
+
+    for version in cn_manifest[0].get("versions", []):
+        source_url = version.get("sourceUrl")
+        if isinstance(source_url, str):
+            version["sourceUrl"] = github_release_url.sub(lambda match: f"{prefix}/{match.group(0)}", source_url, count=1)
+
+    output_path = ROOT_DIR / "manifest_cn.json"
+    output_path.write_text(json.dumps(cn_manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def main() -> None:
@@ -110,7 +144,7 @@ def main() -> None:
     if not manifest:
         manifest = [base_manifest_entry()]
 
-    version = read_yaml_value("version")
+    version = get_version(tag)
     current_version = generate_version(package_path, tag, repository)
     versions = [item for item in manifest[0].get("versions", []) if item.get("version") != version]
     versions.insert(0, current_version)
@@ -119,6 +153,7 @@ def main() -> None:
 
     output_path = ROOT_DIR / "manifest.json"
     output_path.write_text(json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    write_cn_manifest(manifest, repository)
 
 
 if __name__ == "__main__":

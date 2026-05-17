@@ -74,14 +74,14 @@ PYARTIFACTS
 }
 
 NAME="$(read_yaml_value name)"
-VERSION="$(read_yaml_value version)"
+VERSION="${VERSION:-$(read_yaml_value version)}"
 PACKAGE_BASENAME="Douban-Bookshelf-${VERSION}"
 ZIP_PATH="${DIST_DIR}/${PACKAGE_BASENAME}.zip"
 
 rm -rf "$PACKAGE_DIR"
 mkdir -p "$PACKAGE_DIR" "$DIST_DIR"
 
-dotnet publish "$PROJECT_PATH" --configuration Release --output "$PUBLISH_DIR"
+dotnet publish "$PROJECT_PATH" --configuration Release --output "$PUBLISH_DIR" -p:Version="$VERSION" -p:AssemblyVersion="$VERSION" -p:FileVersion="$VERSION"
 
 mapfile -t ARTIFACTS < <(read_artifacts)
 for artifact in "${ARTIFACTS[@]}"; do

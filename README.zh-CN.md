@@ -8,8 +8,6 @@
 
 Jellyfin 豆瓣书架插件是一个 Jellyfin 图书元数据插件，用于从豆瓣获取图书信息。
 
-这个版本已经精简为仅支持豆瓣。Google Books、Comic Vine、漫画压缩包解析、EPUB OPF 解析以及原 Bookshelf 插件中的相关旧功能都已移除。
-
 插件可以导入：
 
 - 标题和副标题
@@ -22,6 +20,34 @@ Jellyfin 豆瓣书架插件是一个 Jellyfin 图书元数据插件，用于从�
 - ISBN
 - 主封面图片
 - 外部豆瓣链接
+
+## 安装
+
+在 Jellyfin 控制台中添加以下任一插件仓库 URL：
+
+```text
+https://github.com/uniqueding/jellyfin-plugin-bookshelf-douban/releases/download/manifest/manifest.json
+```
+
+中文加速链接：
+
+```text
+https://ghfast.top/https://github.com/uniqueding/jellyfin-plugin-bookshelf-douban/releases/download/manifest/manifest_cn.json
+```
+
+手动安装：
+
+1. 解压 `dist/Douban-Bookshelf-0.1.0.0.zip`。
+2. 将解压后的文件复制到 Jellyfin 插件目录，例如：
+
+```text
+plugins/Douban Bookshelf/
+```
+
+3. 重启 Jellyfin。
+4. 在 Jellyfin 控制台中，为图书媒体库启用 `Douban` 元数据抓取器。
+
+如果能看到 `Douban ID` 字段但搜索结果为空，请检查媒体库元数据抓取器中是否已启用 `Douban`。Jellyfin 会分别过滤外部 ID 字段和元数据搜索 Provider。
 
 ## 当前限制
 
@@ -142,7 +168,7 @@ nix-shell --run 'dotnet build "Jellyfin.Plugin.DoubanBookshelf.sln" --configurat
 - 单元测试：`nix-shell --run 'dotnet test "Jellyfin.Plugin.DoubanBookshelf.sln" --configuration Release --logger "console;verbosity=minimal"'`。用于验证文件名解析、豆瓣 HTML 解析、元数据映射、图片 Provider、配置 Cookie 以及拦截响应处理。
 - DebugRunner：`dotnet run --project tools/DoubanDebugRunner -- --douban-id <id>`、`--isbn <isbn>` 或 `--title <title>`。它会执行真实豆瓣请求，并以 JSON 输出解析出的图书；退出码 `0` 表示至少解析到一本书，`1` 表示无结果，`2` 表示参数无效或构建/运行环境失败。
 - 打包校验：`nix-shell --run './scripts/package-plugin.sh'` 会构建 `dist/Douban-Bookshelf-0.1.0.0.zip` 和对应 `.sha256`。可以用 `unzip -l dist/Douban-Bookshelf-0.1.0.0.zip` 确认发布 zip 只包含 `Jellyfin.Plugin.DoubanBookshelf.dll`。
-- Manifest 校验：`GITHUB_REPOSITORY='uniqueding/jellyfin-plugin-bookshelf-douban' python3 ./scripts/generate_manifest.py ./dist/Douban-Bookshelf-0.1.0.0.zip v0.1.0` 会在本地生成 `manifest.json` 供检查。检查后应删除该文件，因为 release workflow 会把它作为发布产物上传。
+- Manifest 校验：打包后运行 `GITHUB_REPOSITORY='uniqueding/jellyfin-plugin-bookshelf-douban' python3 ./scripts/generate_manifest.py ./dist/Douban-Bookshelf-0.1.0.0.zip v0.1.0`，可以在本地生成 `manifest.json` 和 `manifest_cn.json`。
 
 ## 打包
 
@@ -165,29 +191,7 @@ zip 中应只包含：
 Jellyfin.Plugin.DoubanBookshelf.dll
 ```
 
-发布 Release 时还会生成 `manifest.json`。这是 Jellyfin 插件仓库清单，用于描述插件名称、GUID、版本、目标 ABI、安装包 URL、校验和以及更新日志。workflow 会把它发布到固定的 `manifest` release tag。
-
-## 安装
-
-正式发布后，可以在 Jellyfin 控制台中添加这个插件仓库 URL：
-
-```text
-https://github.com/uniqueding/jellyfin-plugin-bookshelf-douban/releases/download/manifest/manifest.json
-```
-
-手动安装时：
-
-1. 解压 `dist/Douban-Bookshelf-0.1.0.0.zip`。
-2. 将解压后的文件复制到 Jellyfin 插件目录，例如：
-
-```text
-plugins/Douban Bookshelf/
-```
-
-3. 重启 Jellyfin。
-4. 在 Jellyfin 控制台中，为图书媒体库启用 `Douban` 元数据抓取器。
-
-如果能看到 `Douban ID` 字段但搜索结果为空，请检查媒体库元数据抓取器中是否已启用 `Douban`。Jellyfin 会分别过滤外部 ID 字段和元数据搜索 Provider。
+发布流程还会生成 `manifest.json` 和 `manifest_cn.json`。它们是 Jellyfin 插件仓库清单，用于描述插件名称、GUID、版本、目标 ABI、安装包 URL、校验和以及更新日志。
 
 ## 使用建议
 
