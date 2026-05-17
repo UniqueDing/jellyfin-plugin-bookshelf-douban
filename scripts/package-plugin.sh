@@ -75,6 +75,8 @@ PYARTIFACTS
 
 NAME="$(read_yaml_value name)"
 VERSION="${VERSION:-$(read_yaml_value version)}"
+FRAMEWORK="$(read_yaml_value framework)"
+BUILD_OUTPUT_DIR="${ROOT_DIR}/Jellyfin.Plugin.DoubanBookshelf/bin/Release/${FRAMEWORK}"
 PACKAGE_BASENAME="Douban-Bookshelf-${VERSION}"
 ZIP_PATH="${DIST_DIR}/${PACKAGE_BASENAME}.zip"
 
@@ -82,6 +84,10 @@ rm -rf "$PACKAGE_DIR"
 mkdir -p "$PACKAGE_DIR" "$DIST_DIR"
 
 dotnet publish "$PROJECT_PATH" --configuration Release --output "$PUBLISH_DIR" -p:Version="$VERSION" -p:AssemblyVersion="$VERSION" -p:FileVersion="$VERSION"
+
+if [[ -f "${BUILD_OUTPUT_DIR}/Jellyfin.Plugin.DoubanBookshelf.dll" ]]; then
+  cp "${BUILD_OUTPUT_DIR}/Jellyfin.Plugin.DoubanBookshelf.dll" "${PUBLISH_DIR}/Jellyfin.Plugin.DoubanBookshelf.dll"
+fi
 
 mapfile -t ARTIFACTS < <(read_artifacts)
 for artifact in "${ARTIFACTS[@]}"; do
