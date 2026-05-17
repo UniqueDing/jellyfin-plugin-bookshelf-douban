@@ -49,8 +49,8 @@ def read_block_value(key: str) -> str:
     raise RuntimeError(f"Missing block {key} in {BUILD_YAML}")
 
 
-def sha256sum(path: Path) -> str:
-    digest = hashlib.sha256()
+def md5sum(path: Path) -> str:
+    digest = hashlib.md5(usedforsecurity=False)
     with path.open("rb") as file:
         for chunk in iter(lambda: file.read(1024 * 1024), b""):
             digest.update(chunk)
@@ -109,7 +109,7 @@ def generate_version(package_path: Path, tag: str, repository: str) -> dict[str,
         "changelog": get_tag_changelog(tag),
         "targetAbi": read_yaml_value("targetAbi"),
         "sourceUrl": f"https://github.com/{repository}/releases/download/{tag}/{package_path.name}",
-        "checksum": sha256sum(package_path),
+        "checksum": md5sum(package_path),
         "timestamp": datetime.now(timezone.utc).isoformat(timespec="seconds"),
     }
 
@@ -146,7 +146,10 @@ def main() -> None:
 
     version = get_version(tag)
     current_version = generate_version(package_path, tag, repository)
-    versions = [item for item in manifest[0].get("versions", []) if item.get("version") != version]
+    existing_versions = manifest[0].get("versions", [])
+    if not isinstance(existing_versions, list):
+        existing_versions = []
+    versions = [item for item in existing_versions if isinstance(item, dict) and item.get("version") != version]
     versions.insert(0, current_version)
     manifest[0].update(base_manifest_entry())
     manifest[0]["versions"] = versions
