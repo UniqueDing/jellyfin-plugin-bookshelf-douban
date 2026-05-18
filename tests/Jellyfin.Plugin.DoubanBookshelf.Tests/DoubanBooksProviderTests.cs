@@ -34,7 +34,8 @@ public class DoubanBooksProviderTests
         var handler = new MockHttpMessageHandler(new List<(Func<Uri, bool> requestMatcher, MockHttpResponse response)>
         {
             (uri => uri.AbsoluteUri.Contains("search?cat=1001", StringComparison.Ordinal), new MockHttpResponse(HttpStatusCode.OK, TestHelpers.GetFixture("douban-book-search.html"))),
-            (uri => uri.AbsoluteUri.Contains("subject/26912767", StringComparison.Ordinal), new MockHttpResponse(HttpStatusCode.OK, TestHelpers.GetFixture("douban-book-detail.html")))
+            (uri => uri.AbsoluteUri.Contains("subject/26912767", StringComparison.Ordinal), new MockHttpResponse(HttpStatusCode.OK, TestHelpers.GetFixture("douban-book-detail.html"))),
+            (uri => uri.AbsoluteUri.Contains("s29195878.jpg", StringComparison.Ordinal), new MockHttpResponse(HttpStatusCode.OK, "cover") { ContentType = "image/jpeg" })
         });
         var mockedHttpClientFactory = Substitute.For<IHttpClientFactory>();
         using var client = new HttpClient(handler);
@@ -50,7 +51,7 @@ public class DoubanBooksProviderTests
             {
                 Assert.Equal(DoubanConstants.ProviderName, first.SearchProviderName);
                 Assert.Equal("深入理解计算机系统 (第3版):原书第3版", first.Name);
-                Assert.Null(first.ImageUrl);
+                Assert.Equal("data:image/jpeg;base64,Y292ZXI=", first.ImageUrl);
                 Assert.Equal(2016, first.ProductionYear);
                 Assert.True(HasProviderId("26912767", first.ProviderIds));
             });
@@ -61,7 +62,8 @@ public class DoubanBooksProviderTests
     {
         var handler = new MockHttpMessageHandler(new List<(Func<Uri, bool> requestMatcher, MockHttpResponse response)>
         {
-            (uri => uri.AbsoluteUri.Contains("subject/26912767", StringComparison.Ordinal), new MockHttpResponse(HttpStatusCode.OK, TestHelpers.GetFixture("douban-book-detail.html")))
+            (uri => uri.AbsoluteUri.Contains("subject/26912767", StringComparison.Ordinal), new MockHttpResponse(HttpStatusCode.OK, TestHelpers.GetFixture("douban-book-detail.html"))),
+            (uri => uri.AbsoluteUri.Contains("s29195878.jpg", StringComparison.Ordinal), new MockHttpResponse(HttpStatusCode.OK, "cover") { ContentType = "image/jpeg" })
         });
         var mockedHttpClientFactory = Substitute.For<IHttpClientFactory>();
         using var client = new HttpClient(handler);
@@ -141,7 +143,8 @@ public class DoubanBooksProviderTests
     {
         var handler = new MockHttpMessageHandler(new List<(Func<Uri, bool> requestMatcher, MockHttpResponse response)>
         {
-            (uri => uri.AbsoluteUri.Contains("subject/26912767", StringComparison.Ordinal), new MockHttpResponse(HttpStatusCode.OK, TestHelpers.GetFixture("douban-book-detail.html")))
+            (uri => uri.AbsoluteUri.Contains("subject/26912767", StringComparison.Ordinal), new MockHttpResponse(HttpStatusCode.OK, TestHelpers.GetFixture("douban-book-detail.html"))),
+            (uri => uri.AbsoluteUri.Contains("s29195878.jpg", StringComparison.Ordinal), new MockHttpResponse(HttpStatusCode.OK, "cover") { ContentType = "image/jpeg" })
         });
         var mockedHttpClientFactory = Substitute.For<IHttpClientFactory>();
         using var client = new HttpClient(handler);
@@ -157,6 +160,7 @@ public class DoubanBooksProviderTests
             {
                 Assert.Equal(DoubanConstants.ProviderName, first.SearchProviderName);
                 Assert.Equal("深入理解计算机系统 (第3版):原书第3版", first.Name);
+                Assert.Equal("data:image/jpeg;base64,Y292ZXI=", first.ImageUrl);
                 Assert.True(HasProviderId("26912767", first.ProviderIds));
             });
     }
@@ -177,6 +181,26 @@ public class DoubanBooksProviderTests
         var results = await provider.GetSearchResults(new BookInfo { Name = "百年孤独" }, CancellationToken.None);
 
         Assert.Empty(results);
+    }
+
+    [Fact]
+    public async Task GetSearchResults_WhenCoverRequestFails_ReturnsResultWithoutImage()
+    {
+        var handler = new MockHttpMessageHandler(new List<(Func<Uri, bool> requestMatcher, MockHttpResponse response)>
+        {
+            (uri => uri.AbsoluteUri.Contains("search?cat=1001", StringComparison.Ordinal), new MockHttpResponse(HttpStatusCode.OK, TestHelpers.GetFixture("douban-book-search.html"))),
+            (uri => uri.AbsoluteUri.Contains("subject/26912767", StringComparison.Ordinal), new MockHttpResponse(HttpStatusCode.OK, TestHelpers.GetFixture("douban-book-detail.html"))),
+            (uri => uri.AbsoluteUri.Contains("s29195878.jpg", StringComparison.Ordinal), new MockHttpResponse(HttpStatusCode.Forbidden, string.Empty))
+        });
+        var mockedHttpClientFactory = Substitute.For<IHttpClientFactory>();
+        using var client = new HttpClient(handler);
+        mockedHttpClientFactory.CreateClient(Arg.Any<string>()).Returns(client);
+
+        IRemoteMetadataProvider<Book, BookInfo> provider = CreateProvider(mockedHttpClientFactory);
+
+        var results = await provider.GetSearchResults(new BookInfo { Name = "深入理解计算机系统" }, CancellationToken.None);
+
+        Assert.Collection(results, first => Assert.Null(first.ImageUrl));
     }
 
     [Fact]
@@ -211,7 +235,8 @@ public class DoubanBooksProviderTests
                 {
                     SetCookies = ["bid=test-cookie; Expires=Fri, 14-May-27 13:21:11 GMT; Domain=.douban.com; Path=/"]
                 }),
-                (uri => uri.AbsoluteUri.Contains("subject/26912767", StringComparison.Ordinal), new MockHttpResponse(HttpStatusCode.OK, TestHelpers.GetFixture("douban-book-detail.html")))
+                (uri => uri.AbsoluteUri.Contains("subject/26912767", StringComparison.Ordinal), new MockHttpResponse(HttpStatusCode.OK, TestHelpers.GetFixture("douban-book-detail.html"))),
+                (uri => uri.AbsoluteUri.Contains("s29195878.jpg", StringComparison.Ordinal), new MockHttpResponse(HttpStatusCode.OK, "cover") { ContentType = "image/jpeg" })
             },
             request => requests.Add(request));
         var mockedHttpClientFactory = Substitute.For<IHttpClientFactory>();
@@ -239,7 +264,8 @@ public class DoubanBooksProviderTests
             new List<(Func<Uri, bool> requestMatcher, MockHttpResponse response)>
             {
                 (uri => uri.AbsoluteUri.Contains("search?cat=1001", StringComparison.Ordinal), new MockHttpResponse(HttpStatusCode.OK, TestHelpers.GetFixture("douban-book-search.html"))),
-                (uri => uri.AbsoluteUri.Contains("subject/26912767", StringComparison.Ordinal), new MockHttpResponse(HttpStatusCode.OK, TestHelpers.GetFixture("douban-book-detail.html")))
+                (uri => uri.AbsoluteUri.Contains("subject/26912767", StringComparison.Ordinal), new MockHttpResponse(HttpStatusCode.OK, TestHelpers.GetFixture("douban-book-detail.html"))),
+                (uri => uri.AbsoluteUri.Contains("s29195878.jpg", StringComparison.Ordinal), new MockHttpResponse(HttpStatusCode.OK, "cover") { ContentType = "image/jpeg" })
             },
             request => requests.Add(request));
         var mockedHttpClientFactory = Substitute.For<IHttpClientFactory>();

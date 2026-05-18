@@ -47,12 +47,18 @@ public class DoubanBooksProvider : IRemoteMetadataProvider<Book, BookInfo>
         if (!string.IsNullOrWhiteSpace(doubanId))
         {
             var book = await _doubanClient.GetBookById(doubanId, cancellationToken).ConfigureAwait(false);
-            return book is null ? [] : [CreateSearchResult(book)];
+            return book is null ? [] : [await CreateSearchResult(book, cancellationToken).ConfigureAwait(false)];
         }
 
         var query = GetSearchString(searchInfo);
         var results = await _doubanClient.SearchBooks(query, cancellationToken).ConfigureAwait(false);
-        return results.Select(CreateSearchResult).ToList();
+        var searchResults = new List<RemoteSearchResult>();
+        foreach (var result in results)
+        {
+            searchResults.Add(await CreateSearchResult(result, cancellationToken).ConfigureAwait(false));
+        }
+
+        return searchResults;
     }
 
     /// <inheritdoc />
@@ -159,13 +165,14 @@ public class DoubanBooksProvider : IRemoteMetadataProvider<Book, BookInfo>
         return searchResults[0].Id;
     }
 
-    private static RemoteSearchResult CreateSearchResult(DoubanBook book)
+    private async Task<RemoteSearchResult> CreateSearchResult(DoubanBook book, CancellationToken cancellationToken)
     {
         var remoteSearchResult = new RemoteSearchResult
         {
             SearchProviderName = DoubanConstants.ProviderName,
             Name = book.Title,
             Overview = WebUtility.HtmlDecode(book.Description),
+            ImageUrl = await _doubanClient.GetImageDataUrl(book.CoverUrl, cancellationToken).ConfigureAwait(false),
             ProductionYear = GetYearFromPublishedDate(book.PublishedDate)
         };
         remoteSearchResult.SetProviderId(DoubanConstants.ProviderId, book.Id);

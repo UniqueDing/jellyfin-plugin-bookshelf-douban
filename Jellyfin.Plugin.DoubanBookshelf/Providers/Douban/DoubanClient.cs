@@ -123,6 +123,51 @@ public sealed class DoubanClient : IDisposable
         return response;
     }
 
+    /// <summary>
+    /// Get an image as a data URL.
+    /// </summary>
+    /// <param name="url">The image url.</param>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The image data URL.</returns>
+    public async Task<string?> GetImageDataUrl(string? url, CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(url))
+        {
+            return null;
+        }
+
+        try
+        {
+            using var response = await GetImageResponse(url, cancellationToken).ConfigureAwait(false);
+            if (!response.IsSuccessStatusCode)
+            {
+                return null;
+            }
+
+            var contentType = response.Content.Headers.ContentType?.MediaType;
+            if (string.IsNullOrWhiteSpace(contentType))
+            {
+                contentType = "image/jpeg";
+            }
+            else if (!contentType.StartsWith("image/", StringComparison.OrdinalIgnoreCase))
+            {
+                return null;
+            }
+
+            var bytes = await response.Content.ReadAsByteArrayAsync(cancellationToken).ConfigureAwait(false);
+            return $"data:{contentType};base64,{Convert.ToBase64String(bytes)}";
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Failed to fetch Douban image for search result: {Url}", url);
+            return null;
+        }
+    }
+
     /// <inheritdoc />
     public void Dispose()
     {

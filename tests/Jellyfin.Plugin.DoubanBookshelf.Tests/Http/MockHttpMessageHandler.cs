@@ -48,6 +48,11 @@ namespace Jellyfin.Plugin.DoubanBookshelf.Tests.Http
                 httpResponse.Headers.Location = response.Location;
             }
 
+            if (!string.IsNullOrWhiteSpace(response.ContentType))
+            {
+                httpResponse.Content.Headers.ContentType = new System.Net.Http.Headers.MediaTypeHeaderValue(response.ContentType);
+            }
+
             foreach (var cookie in response.SetCookies)
             {
                 httpResponse.Headers.Add("Set-Cookie", cookie);

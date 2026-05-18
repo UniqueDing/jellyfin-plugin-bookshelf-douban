@@ -6,6 +6,8 @@ namespace Jellyfin.Plugin.DoubanBookshelf.Tests.Http
     {
         public Uri? Location { get; init; }
 
+        public string? ContentType { get; init; }
+
         public IReadOnlyList<string> SetCookies { get; init; } = [];
     }
 }
